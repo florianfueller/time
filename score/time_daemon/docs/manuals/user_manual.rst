@@ -121,12 +121,24 @@ These public targets provide the units that ``SvtHandler`` is built from:
 * ``msg_broker``: ``Topic``, to declare the wiring.
 * ``ptp_time_info``: ``PtpTimeInfo``, the message type of ``SvtHandler``.
 * ``ptp_control_flow_divider``: ``CreatePtpControlFlowDivider()``.
+* ``ptp_machine``: ``PTPMachine<PTPEngine>`` and ``CreatePTPMachine<PTPEngine>()``, the PTP machine for an own engine.
 * ``gptp_shm_machine``: ``CreateGPTPShmMachine()``, the PTP machine that reads the data published by ``TimeSlave``.
 * ``svt_verification_machine``: ``CreateSvtVerificationMachine()``.
 * ``svt_publisher``: ``CreateSvtPublisher()``, the publisher that writes ``/svt_shmem_path``.
 
 The factories fix the settings of the machines, such as the 50 ms update interval of the PTP machine and the thresholds
 of the verification machine.
+
+To read the PTP data from another source than ``TimeSlave``, implement an engine and create its PTP machine with
+``CreatePTPMachine()``. It forwards its remaining arguments to the constructor of the engine:
+
+.. code-block:: cpp
+
+    auto ptp_machine = Add(CreatePTPMachine<VendorPtpEngine>("ptp_worker", vendor_client));
+
+The engine provides ``bool Initialize()``, ``bool Deinitialize()`` and ``bool ReadPTPSnapshot(PtpTimeInfo&)``. A static
+assertion in ``PTPMachine`` rejects other types. ``ptp_machine.h`` documents when and on which thread the machine calls
+these functions.
 
 Runtime Requirements
 ====================

@@ -14,7 +14,8 @@
 #include "score/time_daemon/src/control_flow_divider/ptp/factory.h"
 #include "score/time_daemon/src/ipc/svt/publisher/factory.h"
 #include "score/time_daemon/src/msg_broker/topic.h"
-#include "score/time_daemon/src/ptp_machine/shm/factory.h"
+#include "score/time_daemon/src/ptp_machine/core/factory.h"
+#include "score/time_daemon/src/ptp_machine/shm/details/shm_ptp_engine.h"
 #include "score/time_daemon/src/verification_machine/svt/factory.h"
 
 #include <chrono>
@@ -31,7 +32,7 @@ void SvtHandler::CreateComponents() noexcept
     // Added first so that the control flow divider starts before the gPTP machine publishes data.
     auto ctrl_flow_divider =
         Add(CreatePtpControlFlowDivider("ptp_control_flow_divider", std::chrono::milliseconds{250}));
-    auto gptp_machine = Add(CreateGPTPShmMachine("ptp_worker"));
+    auto gptp_machine = Add(CreatePTPMachine<details::ShmPTPEngine>("ptp_worker"));
     auto verification_machine = Add(CreateSvtVerificationMachine("time_verification_worker"));
     auto ipc_publisher = Add(CreateSvtPublisher("svt_ipc_publisher"));
 

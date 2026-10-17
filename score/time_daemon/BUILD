@@ -95,6 +95,12 @@ alias(
 )
 
 alias(
+    name = "ptp_machine",
+    actual = "//score/time_daemon/src/ptp_machine/core:ptp_machine",
+    visibility = ["//visibility:public"],
+)
+
+alias(
     name = "gptp_shm_machine",
     actual = "//score/time_daemon/src/ptp_machine/shm:gptp_shm_machine",
     visibility = ["//visibility:public"],

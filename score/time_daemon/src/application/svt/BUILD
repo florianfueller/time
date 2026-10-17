@@ -35,6 +35,8 @@ load("@score_baselibs//score/language/safecpp:toolchain_features.bzl", "COMPILER
             "//score/time_daemon/src/control_flow_divider/ptp:ptp_control_flow_divider",
             "//score/time_daemon/src/ipc/svt/publisher:factory",
             "//score/time_daemon/src/msg_broker",
+            "//score/time_daemon/src/ptp_machine/core:ptp_machine",
+            "//score/time_daemon/src/ptp_machine/shm/details:shm_ptp_engine",
         ] + deps,
     )
     for name, testonly, deps in [
@@ -42,7 +44,6 @@ load("@score_baselibs//score/language/safecpp:toolchain_features.bzl", "COMPILER
             "svt_handler",
             False,
             [
-                "//score/time_daemon/src/ptp_machine/shm:gptp_shm_machine",
                 "//score/time_daemon/src/verification_machine/svt:svt_verification_machine",
             ],
         ),
@@ -50,7 +51,6 @@ load("@score_baselibs//score/language/safecpp:toolchain_features.bzl", "COMPILER
             "svt_handler_for_utests",
             True,
             [
-                "//score/time_daemon/src/ptp_machine/shm:gptp_shm_machine",
                 "//score/time_daemon/src/verification_machine/svt:svt_verification_machine_for_utests",
             ],
         ),

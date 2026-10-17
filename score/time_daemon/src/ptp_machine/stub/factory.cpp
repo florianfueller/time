@@ -12,6 +12,7 @@
  ********************************************************************************/
 #include "score/time_daemon/src/ptp_machine/stub/factory.h"
 #include "score/time/high_res_steady_time/src/high_res_steady_clock.h"
+#include "score/time_daemon/src/ptp_machine/core/factory.h"
 
 namespace score
 {
@@ -20,8 +21,7 @@ namespace td
 
 std::shared_ptr<GPTPStubMachine> CreateGPTPStubMachine(const std::string& name)
 {
-    constexpr std::chrono::milliseconds updateInterval(50);
-    return std::make_shared<GPTPStubMachine>(name, updateInterval, score::time::HighResSteadyClock::GetInstance());
+    return CreatePTPMachine<details::StubPTPEngine>(name, score::time::HighResSteadyClock::GetInstance());
 }
 
 }  // namespace td

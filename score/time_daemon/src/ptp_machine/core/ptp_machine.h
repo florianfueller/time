@@ -21,11 +21,31 @@
 #include "score/mw/log/logging.h"
 
 #include <memory>
+#include <type_traits>
+#include <utility>
 
 namespace score
 {
 namespace td
 {
+
+/// @brief @c true if @p Engine provides the functions that @c PTPMachine calls: @c Initialize(), @c Deinitialize()
+/// and @c ReadPTPSnapshot(PtpTimeInfo&), each returning a type convertible to @c bool.
+template <typename Engine, typename = void>
+struct IsPTPEngine : std::false_type
+{
+};
+
+template <typename Engine>
+struct IsPTPEngine<
+    Engine,
+    std::enable_if_t<
+        std::is_convertible_v<decltype(std::declval<Engine&>().Initialize()), bool> &&
+        std::is_convertible_v<decltype(std::declval<Engine&>().Deinitialize()), bool> &&
+        std::is_convertible_v<decltype(std::declval<Engine&>().ReadPTPSnapshot(std::declval<PtpTimeInfo&>())), bool>>>
+    : std::true_type
+{
+};
 
 /// @brief Retrieves raw PTP time data from a customizable gPTP handler (e.g. Time Slave) and publishes it to
 /// the MessageBroker.
@@ -41,7 +61,14 @@ namespace td
 ///   3. Data published to MessageBroker as the @c raw_ptp_data topic.
 ///   4. @c ControlFlowDivider receives it and separates control flow for the pipeline.
 ///
-/// @tparam PTPEngine Platform-specific PTP stack interface (e.g. ShmPTPEngine).
+/// @tparam PTPEngine Reads the data from the PTP stack (e.g. ShmPTPEngine, or an own engine for another source).
+///         Must satisfy @c IsPTPEngine, and none of its functions may throw. PTPMachine owns the engine and calls:
+///         - @c Initialize() from @c Init(). Must return promptly, because the owner retries @c Init() until it
+///           returns @c true (e.g. the JobRunner of @c GenericTimebaseHandler, until its init timeout expires).
+///         - @c ReadPTPSnapshot() from the worker thread once per update interval, only after @c Initialize()
+///           succeeded. It fills a value-initialized @c PtpTimeInfo; on @c false nothing is published.
+///         - @c Deinitialize() from the destructor, after the worker thread has stopped, if @c Initialize()
+///           succeeded.
 ///
 /// @see ControlFlowDivider For control flow separation.
 /// @see PtpTimeInfo For the data structure definition.
@@ -49,6 +76,10 @@ namespace td
 template <class PTPEngine>
 class PTPMachine final : public PeriodicMachine, public Producer<PtpTimeInfo>
 {
+    static_assert(
+        IsPTPEngine<PTPEngine>::value,
+        "PTPEngine must provide bool Initialize(), bool Deinitialize() and bool ReadPTPSnapshot(PtpTimeInfo&)");
+
   public:
     /// @brief Constructs a PTPMachine with the specified name, update interval, and PTP engine arguments.
     ///
@@ -67,6 +98,7 @@ class PTPMachine final : public PeriodicMachine, public Producer<PtpTimeInfo>
             << "PTPMachine created with update interval: " << updateInterval.count() << "ms";
     }
 
+    /// @brief Stops the worker thread, then deinitialises the PTP engine.
     ~PTPMachine() override;
 
     PTPMachine(const PTPMachine&) = delete;
@@ -118,6 +150,8 @@ class PTPMachine final : public PeriodicMachine, public Producer<PtpTimeInfo>
 template <class PTPEngine>
 PTPMachine<PTPEngine>::~PTPMachine()
 {
+    // Join the worker thread first, so that Deinitialize() never runs concurrently with ReadPTPSnapshot().
+    PeriodicMachine::Stop();
     Deinit();
 }
 
